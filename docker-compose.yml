@@ -1,0 +1,52 @@
+# Standalone compose file to attach ac-db-backup to an existing AzerothCore Docker network.
+
+services:
+  ac-db-backup:
+    image: mysql:8.4
+    container_name: ac-db-backup
+    restart: unless-stopped
+    networks:
+      - wow_backend_net
+    volumes:
+      - ${BACKUP_HOST_DIR:-./backups}:/backups
+    environment:
+      TZ: ${TZ:-Europe/Berlin}
+      DB_HOST: ${DOCKER_DB_HOST:-ac-database}
+      DB_USER: ${DOCKER_DB_USER:-root}
+      DB_PASSWORD: ${DOCKER_DB_ROOT_PASSWORD:-password}
+      BACKUP_DATABASES: ${DOCKER_DB_BACKUP_DATABASES:-acore_auth acore_characters acore_playerbots}
+      BACKUP_FREQUENCY: ${DOCKER_DB_BACKUP_FREQUENCY:-3600}
+      RETENTION_DAYS: ${DOCKER_DB_RETENTION_DAYS:-7}
+      MIN_KEEP: ${DOCKER_DB_BACKUP_MIN_KEEP:-10}
+    stop_grace_period: 30s
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        set -o pipefail
+        run_backup() {
+          local tag="$$1"
+          local ts="$$(date +%Y%m%d_%H%M%S)"
+          local tmp="/backups/.ac_backup_$${ts}_$${tag}.tmp"
+          local out="/backups/ac_backup_$${ts}_$${tag}.sql.gz"
+          if MYSQL_PWD="$$DB_PASSWORD" mysqldump -h "$$DB_HOST" -u "$$DB_USER" --databases $$BACKUP_DATABASES --routines --triggers --single-transaction | gzip > "$$tmp" && [ -s "$$tmp" ]; then
+            mv "$$tmp" "$$out"
+            echo "[BACKUP] Saved: $$out"
+          else
+            rm -f "$$tmp"
+            echo "[BACKUP] ERROR creating backup ($$tag)!" >&2
+          fi
+        }
+        trap 'echo "[BACKUP] SIGTERM received! Running shutdown backup..."; run_backup stop; exit 0' SIGTERM
+        echo "[BACKUP] Service started (interval: $${BACKUP_FREQUENCY}s, retention: $${RETENTION_DAYS}d, min-keep: $${MIN_KEEP})..."
+        while true; do
+          run_backup timer
+          ls -1t /backups/ac_backup_*.sql* 2>/dev/null | tail -n +$$((MIN_KEEP + 1)) | xargs -r -I{} find "{}" -mtime +$${RETENTION_DAYS} -delete
+          sleep $${BACKUP_FREQUENCY} &
+          wait $$!
+        done
+
+networks:
+  wow_backend_net:
+    external: true
+    name: ${AC_DOCKER_NETWORK:-wow-server-playerbots_ac-network}
