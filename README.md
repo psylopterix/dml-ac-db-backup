@@ -13,7 +13,7 @@ Designed as a drop-in sidecar add-on for **Dad's MMO Lab (DML)** AzerothCore set
 ---
 
 ## Option A: Sidecar in Dad's MMO Lab (DML) AzerothCore Setup
-1. Copy `docker-compose.override.yml` into your AzerothCore server directory (or merge the `ac-database` and `ac-db-backup` blocks into your existing `docker-compose.override.yml`).
+1. If you do **not** have a `docker-compose.override.yml` in your AzerothCore server directory yet, copy the provided file over. **Warning:** If you already have one, **do not overwrite it**—instead, open it and merge the `ac-database` and `ac-db-backup` service blocks into your existing file.
 2. Optionally copy variables from `.env.example` into your `.env` file to customize databases, interval, or retention.
 3. Start or update your stack:
    ```bash
