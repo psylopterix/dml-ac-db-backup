@@ -26,7 +26,7 @@ Backups will be saved to `./sql_scripts/backups/`.
 ## Option B: Standalone Alongside an Existing AzerothCore Stack
 1. Clone this repository into a separate folder:
    ```bash
-   git clone https://github.com
+   git clone https://github.com/psylopterix/dml-ac-db-backup.git
    cd dml-ac-db-backup
    cp .env.example .env
    ```
@@ -35,7 +35,11 @@ Backups will be saved to `./sql_scripts/backups/`.
    docker network ls
    ```
    Look for the network ending in `_ac-network` (e.g. `wow-server-playerbots_ac-network`).
-3. Set `AC_DOCKER_NETWORK`, `BACKUP_HOST_DIR` (optional), and your `DOCKER_DB_ROOT_PASSWORD` in `.env`, then start the backup service:
+3. Create the local backup directory (so your user owns the folder instead of `root`) and configure `.env` (`AC_DOCKER_NETWORK`, `BACKUP_HOST_DIR`, `DOCKER_DB_ROOT_PASSWORD`):
+   ```bash
+   mkdir -p backups
+   ```
+4. Start the backup service:
    ```bash
    docker compose up -d
    ```
